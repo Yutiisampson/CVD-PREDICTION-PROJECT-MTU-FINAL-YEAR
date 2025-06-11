@@ -1,9 +1,7 @@
-**Running the Applications: Input in terminal**
+Running the Applications: Input in terminal
 
 cd path/to/your/project
-
 uvicorn api:app --reload
-
 streamlit run app.py
 
 **Note**
