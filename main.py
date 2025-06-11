@@ -1,20 +1,25 @@
-# main.py
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import Dict
+from typing import Dict, Any
 from fastapi.middleware.cors import CORSMiddleware
+import pickle
+import pandas as pd
+import numpy as np
+
+from preprocessing import preprocess_input 
 
 app = FastAPI()
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Replace "*" with your Streamlit app URL for security
+    allow_origins=["https://cvdprediction-mtu.streamlit.app/"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
 class InputData(BaseModel):
-    # define all the fields as you did in Streamlit
     General_Health: str
     Checkup: str
     Exercise: str
@@ -34,14 +39,37 @@ class InputData(BaseModel):
     Green_Vegetables_Consumption: int
     FriedPotato_Consumption: int
 
+with open("model.pkl", "rb") as f:
+    model = pickle.load(f)
+
+with open("scaler.pkl", "rb") as f:
+    scaler = pickle.load(f)
+
+with open("selected_features.pkl", "rb") as f:
+    selected_features = pickle.load(f)
+
+# --- Health check endpoint ---
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
+
 @app.post("/predict")
-def predict(data: InputData) -> Dict:
-    # Wire up your real ML model prediction here
-    return {
-        "prediction": "No",
-        "probability": {"No": 0.85, "Yes": 0.15}
-    }
+def predict(data: PredictionInput) -> Dict[str, Any]:
+    try:
+        input_dict = data.dict()
+        processed_input = preprocess_input(input_dict, selected_features, scaler, is_training=False)
+        
+        prediction = model.predict(processed_input)[0]
+        prediction_proba = model.predict_proba(processed_input)[0]
+
+        return {
+            "prediction": "Yes" if prediction == 1 else "No",
+            "probability": {
+                "Yes": float(prediction_proba[1]),
+                "No": float(prediction_proba[0]),
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+
