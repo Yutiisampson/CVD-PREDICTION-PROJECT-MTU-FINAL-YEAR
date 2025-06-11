@@ -2,11 +2,12 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any
 from fastapi.middleware.cors import CORSMiddleware
-import pickle
+import joblib
 import pandas as pd
 import numpy as np
 
 from preprocessing import preprocess_input 
+
 
 app = FastAPI()
 
@@ -39,14 +40,10 @@ class InputData(BaseModel):
     Green_Vegetables_Consumption: int
     FriedPotato_Consumption: int
 
-with open("model.pkl", "rb") as f:
-    model = pickle.load(f)
-
-with open("scaler.pkl", "rb") as f:
-    scaler = pickle.load(f)
-
-with open("selected_features.pkl", "rb") as f:
-    selected_features = pickle.load(f)
+random_forest_model = joblib.load("random_forest_model.joblib")
+scaler = joblib.load("scaler.joblib")
+selected_features = joblib.load("selected_features.joblib")
+label_encoder  = joblib.load("label_encoder.joblib")
 
 # --- Health check endpoint ---
 @app.get("/health")
