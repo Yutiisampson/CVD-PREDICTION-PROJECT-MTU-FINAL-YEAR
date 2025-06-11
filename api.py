@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import joblib
 from preprocessing import preprocess_input
 
+
 app = FastAPI()
 
 # Load saved objects
