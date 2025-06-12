@@ -52,7 +52,7 @@ with st.form("prediction_form"):
         }
         try:
             with st.spinner("Predicting..."):
-                response = requests.post("https://cvd-backend-api.onrender.com/predict", json=input_data)
+                response = requests.post("https://cvd-prediction-project-mtu-final-year-2.onrender.com/predict", json=input_data)
                 response.raise_for_status()
                 result = response.json()
                 st.success(f"Prediction: {result['prediction']}")
