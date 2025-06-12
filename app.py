@@ -52,10 +52,12 @@ with st.form("prediction_form"):
         }
         try:
             response = requests.post("https://cvd-backend-api.onrender.com/predict", json=input_data)
-            response.raise_for_status()  # Raise exception for bad status codes
-            result = response.json()
-            st.success(f"Prediction: {result['prediction']}")
-            st.write(f"Probability of No Heart Disease: {result['probability']['No']:.2%}")
-            st.write(f"Probability of Heart Disease: {result['probability']['Yes']:.2%}")
+            response.raise_for_status()  
+            with st.spinner("Predicting..."):
+                response = requests.post("https://cvd-backend-api.onrender.com/predict", json=input_data)
+                result = response.json()
+                st.success(f"Prediction: {result['prediction']}")
+                st.write(f"Probability of No Heart Disease: {result['probability']['No']:.2%}")
+                st.write(f"Probability of Heart Disease: {result['probability']['Yes']:.2%}")
         except requests.exceptions.RequestException as e:
             st.error(f"API error: {e}")
