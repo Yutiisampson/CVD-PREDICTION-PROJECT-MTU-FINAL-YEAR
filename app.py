@@ -51,10 +51,9 @@ with st.form("prediction_form"):
             "FriedPotato_Consumption": fried_potato
         }
         try:
-            response = requests.post("https://cvd-backend-api.onrender.com/predict", json=input_data)
-            response.raise_for_status()  
             with st.spinner("Predicting..."):
                 response = requests.post("https://cvd-backend-api.onrender.com/predict", json=input_data)
+                response.raise_for_status()
                 result = response.json()
                 st.success(f"Prediction: {result['prediction']}")
                 st.write(f"Probability of No Heart Disease: {result['probability']['No']:.2%}")
