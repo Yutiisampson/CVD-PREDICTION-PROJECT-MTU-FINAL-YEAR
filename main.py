@@ -50,15 +50,14 @@ label_encoder  = joblib.load("label_encoder.joblib")
 def health():
     return {"status": "ok"}
 
-
 @app.post("/predict")
 def predict(data: PredictionInput) -> Dict[str, Any]:
     try:
         input_dict = data.dict()
         processed_input = preprocess_input(input_dict, selected_features, scaler, is_training=False)
-        
-        prediction = model.predict(processed_input)[0]
-        prediction_proba = model.predict_proba(processed_input)[0]
+
+        prediction = random_forest_model.predict(processed_input)[0]
+        prediction_proba = random_forest_model.predict_proba(processed_input)[0]
 
         return {
             "prediction": "Yes" if prediction == 1 else "No",
