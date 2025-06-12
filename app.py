@@ -50,6 +50,9 @@ with st.form("prediction_form"):
             "Green_Vegetables_Consumption": green_vegetables,
             "FriedPotato_Consumption": fried_potato
         }
+        
+        API_URL = "https://cvd-prediction-project-mtu-final-year-2.onrender.com/predict"
+        
         try:
             with st.spinner("Predicting..."):
                 response = requests.post("https://cvd-prediction-project-mtu-final-year-2.onrender.com/predict", json=input_data)
