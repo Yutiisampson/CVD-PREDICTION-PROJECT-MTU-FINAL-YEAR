@@ -1,4 +1,5 @@
 streamlit
+requests
 fastapi
 uvicorn
 scikit-learn==1.4.2
