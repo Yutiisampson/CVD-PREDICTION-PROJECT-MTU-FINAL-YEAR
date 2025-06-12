@@ -20,7 +20,7 @@ app.add_middleware(
 )
 
 
-class InputData(BaseModel):
+class PredictionInput(BaseModel):
     General_Health: str
     Checkup: str
     Exercise: str
