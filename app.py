@@ -51,7 +51,7 @@ with st.form("prediction_form"):
             "FriedPotato_Consumption": fried_potato
         }
         try:
-            response = requests.post("http://127.0.0.1:8000/predict/", json=input_data)
+            response = requests.post("https://cvd-backend-api.onrender.com/predict", json=input_data)
             response.raise_for_status()  # Raise exception for bad status codes
             result = response.json()
             st.success(f"Prediction: {result['prediction']}")
