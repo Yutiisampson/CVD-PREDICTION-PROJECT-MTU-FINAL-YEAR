@@ -3,6 +3,11 @@ import requests
 
 st.title("Cardiovascular Disease Prediction")
 
+if "prediction_result" not in st.session_state:
+    st.session_state.prediction_result = None
+if "submitted" not in st.session_state:
+    st.session_state.submitted = False
+
 with st.form("prediction_form"):
     st.header("Patient Details")
     general_health = st.selectbox("General Health", ["Poor", "Fair", "Good", "Very Good", "Excellent"])
@@ -52,14 +57,20 @@ with st.form("prediction_form"):
         }
         
         API_URL = "https://cvd-prediction-project-mtu-final-year-2.onrender.com/predict"
-        
         try:
             with st.spinner("Predicting..."):
-                response = requests.post("https://cvd-prediction-project-mtu-final-year-2.onrender.com/predict", json=input_data)
+                response = requests.post(API_URL, json=input_data, timeout=20)
                 response.raise_for_status()
                 result = response.json()
-                st.success(f"Prediction: {result['prediction']}")
-                st.write(f"Probability of No Heart Disease: {result['probability']['No']:.2%}")
-                st.write(f"Probability of Heart Disease: {result['probability']['Yes']:.2%}")
+                st.session_state.prediction_result = result
+                st.session_state.submitted = True
         except requests.exceptions.RequestException as e:
             st.error(f"API error: {e}")
+            st.session_state.prediction_result = False
+
+
+if st.session_state.submitted and st.session_state.prediction_result:
+    result = st.session_state.prediction_result
+    st.success(f"Prediction: {result['prediction']}")
+    st.write(f"🟢 Probability of No Heart Disease: **{result['probability']['No']:.2%}**")
+    st.write(f"🔴 Probability of Heart Disease: **{result['probability']['Yes']:.2%}**")
