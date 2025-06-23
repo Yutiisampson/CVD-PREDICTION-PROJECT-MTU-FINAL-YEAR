@@ -25,7 +25,8 @@ def preprocess_input(data, selected_features, scaler, is_training=False):
         'General_Health', 'Checkup', 'Exercise', 'Skin_Cancer', 'Other_Cancer',
         'Depression', 'Diabetes', 'Arthritis', 'Gender', 'Age_Category',
         'Height_cm', 'Weight_kg', 'BMI', 'Smoking_History',
-        'Alcohol_Consumption_2', 'Fruit_Consumption_Consumption', 'Health_Consumption', 'FriedPotato_Consumption'
+        'Alcohol_Consumption', 'Fruit_Consumption',
+        'Green_Vegetables_Consumption', 'FriedPotato_Consumption'
     ]
     missing_cols = [col for col in required_cols if col not in cardio.columns]
     if missing_cols:
@@ -73,8 +74,8 @@ def preprocess_input(data, selected_features, scaler, is_training=False):
     # Numerical columns
     numerical_cols = [
         'Height_cm', 'Weight_kg', 'BMI',
-        'Alcohol_Consumption_2', 'Fruit_Consumption_Consumption',
-        'Health_Consumption', 'FriedPotato_Consumption'
+        'Alcohol_Consumption', 'Fruit_Consumption',
+        'Green_Vegetables_Consumption', 'FriedPotato_Consumption'
     ]
 
     # Validate numerical columns
