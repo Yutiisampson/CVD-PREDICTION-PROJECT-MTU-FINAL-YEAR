@@ -1,111 +1,162 @@
 import streamlit as st
 import requests
+import pandas as pd
 import os
 import logging
+import json
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# App title
 st.title("Cardiovascular Disease Prediction")
 
-# Environment variable for API URL
 API_URL = os.getenv("API_URL", "https://cvd-prediction-project-mtu-final-year-2.onrender.com/predict")
 
-# Session state initialization
 if "prediction_result" not in st.session_state:
     st.session_state.prediction_result = None
 if "submitted" not in st.session_state:
     st.session_state.submitted = False
+if "dataset_predictions" not in st.session_state:
+    st.session_state.dataset_predictions = None
 
-# Reset button
-if st.button("Reset Form"):
-    st.session_state.submitted = False
-    st.session_state.prediction_result = None
-    st.rerun()
+tab1, tab2 = st.tabs(["Single Prediction", "Dataset Upload"])
 
-# Input form
-with st.form("prediction_form"):
-    st.header("Patient Details")
-    
-    general_health = st.selectbox("General Health", ["Poor", "Fair", "Good", "Very Good", "Excellent"])
-    checkup = st.selectbox("Last Checkup", ["In the past year", "Within the last 2 years", 
-                                            "In the last 5 years", "5 years or longer ago", "Never"])
-    exercise = st.selectbox("Exercise", ["Yes", "No"])
-    skin_cancer = st.selectbox("Skin Cancer", ["Yes", "No"])
-    other_cancer = st.selectbox("Other Cancer", ["Yes", "No"])
-    depression = st.selectbox("Depression", ["Yes", "No"])
-    diabetes = st.selectbox("Diabetes", ["No", "Yes", "No, pre-diabetes or borderline diabetes", 
-                                         "Yes, but female told only during pregnancy"])
-    arthritis = st.selectbox("Arthritis", ["Yes", "No"])
-    gender =  st.selectbox("Gender", ["Male", "Female"])
-    age_category = st.selectbox("Age Category", ["18-24", "25-29", "30-34", "35-39", "40-44", 
-                                                 "45-49", "50-54", "55-59", "60-64", "65-69", 
-                                                 "70-74", "75-79", "80+"])
-    height_cm = st.number_input("Height (cm)", min_value=100.0, max_value=250.0, value=170.0)
-    weight_kg = st.number_input("Weight (kg)", min_value=30.0, max_value=200.0, value=70.0)
-    bmi = st.number_input("BMI", min_value=10.0, max_value=50.0, value=24.2)
-    smoking_history = st.selectbox("Smoking History", ["Yes", "No"])
-    alcohol_consumption = st.number_input("Alcohol Consumption (drinks/month)", min_value=0, max_value=100, value=2)
-    fruit_consumption = st.number_input("Fruit Consumption (servings/month)", min_value=0, max_value=100, value=60)
-    green_vegetables = st.number_input("Green Vegetables Consumption (servings/month)", min_value=0, max_value=100, value=30)
-    fried_potato = st.number_input("Fried Potato Consumption (servings/month)", min_value=0, max_value=100, value=2)
-
-    # Validate BMI consistency
-    calculated_bmi = weight_kg / ((height_cm / 100) ** 2)
-    if abs(bmi - calculated_bmi) > 0.5:
-        st.warning(f"BMI ({bmi:.2f}) does not match height/weight ({calculated_bmi:.2f}). Please verify.")
-
-    submitted = st.form_submit_button("Predict")
-
-    if submitted:
-        st.session_state.submitted = True
-        st.session_state.prediction_result = None
-
-        inputs = {
-            "General_Health": general_health,
-            "Checkup": checkup,
-            "Exercise": exercise,
-            "Skin_Cancer": skin_cancer,
-            "Other_Cancer": other_cancer,
-            "Depression": depression,
-            "Diabetes": diabetes,
-            "Arthritis": arthritis,
-            "Gender": gender,
-            "Age_Category": age_category,
-            "Height_cm": height_cm,
-            "Weight_kg": weight_kg,
-            "BMI": bmi,
-            "Smoking_History": smoking_history,
-            "Alcohol_Consumption": alcohol_consumption,
-            "Fruit_Consumption": fruit_consumption,
-            "Green_Vegetables_Consumption": green_vegetables,
-            "FriedPotato_Consumption": fried_potato
-        }
+with tab1:
+    with st.form("prediction_form"):
+        st.header("Patient Details")
         
-        logger.info(f"Sending inputs to API: {inputs}")
-        st.write("**Debug: Input Data to API**", inputs)
+        general_health = st.selectbox("General Health", ["Poor", "Fair", "Good", "Very Good", "Excellent"])
+        checkup = st.selectbox("Last Checkup", ["In the past year", "Within the last 2 years", 
+                                                "In the last 5 years", "5 years or longer ago", "Never"])
+        exercise = st.selectbox("Exercise", ["Yes", "No"])
+        skin_cancer = st.selectbox("Skin Cancer", ["Yes", "No"])
+        other_cancer = st.selectbox("Other Cancer", ["Yes", "No"])
+        depression = st.selectbox("Depression", ["Yes", "No"])
+        diabetes = st.selectbox("Diabetes", ["No", "Yes", "No, pre-diabetes or borderline diabetes", 
+                                             "Yes, but female told only during pregnancy"])
+        arthritis = st.selectbox("Arthritis", ["Yes", "No"])
+        gender = st.selectbox("Gender", ["Male", "Female"])
+        age_category = st.selectbox("Age Category", ["18-24", "25-29", "30-34", "35-39", "40-44", 
+                                                     "45-49", "50-54", "55-59", "60-64", "65-69", 
+                                                     "70-74", "75-79", "80+"])
+        height_cm = st.number_input("Height (cm)", min_value=100.0, max_value=250.0, value=170.0)
+        weight_kg = st.number_input("Weight (kg)", min_value=30.0, max_value=200.0, value=80.0)
+        bmi = st.number_input("BMI", min_value=10.0, max_value=50.0, value=27.7)
+        smoking_history = st.selectbox("Smoking History", ["Yes", "No"])
+        alcohol_consumption = st.number_input("Alcohol Consumption (drinks/month)", min_value=0, max_value=100, value=5)
+        fruit_consumption = st.number_input("Fruit Consumption (servings/month)", min_value=0, max_value=100, value=30)
+        green_vegetables = st.number_input("Green Vegetables (servings/month)", min_value=0, max_value=100, value=15)
+        fried_potato = st.number_input("Fried Potatoes (servings/month)", min_value=0, max_value=100, value=4)
 
-        try:
-            with st.spinner("Predicting..."):
-                response = requests.post(API_URL, json=inputs, timeout=30)
-                response.raise_for_status()
-                result = response.json()
-                logger.info(f"API Response: {result}")
-                st.write("**Debug: API Response**", result)
-                st.session_state.prediction_result = result
-        except requests.exceptions.RequestException as e:
-            st.error(f"Prediction failed: {str(e)}")
+        calculated_bmi = weight_kg / ((height_cm / 100) ** 2)
+        if abs(bmi - calculated_bmi) > 0.5:
+            st.warning(f"BMI ({bmi:.2f}) does not match height/weight ({calculated_bmi:.2f}).")
+
+        submitted = st.form_submit_button("Predict")
+
+        if submitted:
+            st.session_state.submitted = True
             st.session_state.prediction_result = None
 
-# Show prediction result
-if st.session_state.submitted:
-    result = st.session_state.prediction_result
-    if result:
+            inputs = {
+                "General_Health": general_health,
+                "Checkup": checkup,
+                "Exercise": exercise,
+                "Skin_Cancer": skin_cancer,
+                "Other_Cancer": other_cancer,
+                "Depression": depression,
+                "Diabetes": diabetes,
+                "Arthritis": arthritis,
+                "Gender": gender,
+                "Age_Category": age_category,
+                "Height_cm": height_cm,
+                "Weight_kg": weight_kg,
+                "BMI": bmi,
+                "Smoking_History": smoking_history,
+                "Alcohol_Consumption": alcohol_consumption,
+                "Fruit_Consumption": fruit_consumption,
+                "Green_Vegetables_Consumption": green_vegetables,
+                "FriedPotato_Consumption": fried_potato
+            }
+
+            logger.info(f"Sending inputs to API: {json.dumps(inputs, indent=2)}")
+            st.write("**Debug: Input Data to API**", inputs)
+
+            try:
+                with st.spinner("Predicting..."):
+                    response = requests.post(API_URL, json=inputs, timeout=30)
+                    response.raise_for_status()
+                    result = response.json()
+                    logger.info(f"API Response: {json.dumps(result, indent=2)}")
+                    st.session_state.prediction_result = result
+            except requests.exceptions.RequestException as e:
+                st.error(f"Prediction failed: {str(e)}")
+                logger.error(f"Prediction failed: {str(e)}")
+
+    if st.session_state.submitted and st.session_state.prediction_result:
+        result = st.session_state.prediction_result
         st.success(f"Prediction: {result['prediction']}")
         st.write(f"🟢 Probability of No Heart Disease: **{result['probability']['No']:.2%}**")
         st.write(f"🔴 Probability of Heart Disease: **{result['probability']['Yes']:.2%}**")
         st.write("**Full API Response**:", result)
-    else:
-        st.warning("No prediction result available. Try again.")
+
+with tab2:
+    st.header("Upload Dataset for Batch Prediction")
+    uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
+    
+    if uploaded_file:
+        try:
+            df = pd.read_csv(uploaded_file)
+            st.write("Dataset Preview:", df.head())
+
+            required_cols = [
+                'General_Health', 'Checkup', 'Exercise', 'Skin_Cancer', 'Other_Cancer',
+                'Depression', 'Diabetes', 'Arthritis', 'Gender', 'Age_Category',
+                'Height_cm', 'Weight_kg', 'BMI', 'Smoking_History',
+                'Alcohol_Consumption', 'Fruit_Consumption',
+                'Green_Vegetables_Consumption', 'FriedPotato_Consumption'
+            ]
+            missing_cols = [col for col in required_cols if col not in df.columns]
+            if missing_cols:
+                st.error(f"Missing columns in dataset: {missing_cols}")
+            else:
+                if st.button("Predict on Dataset"):
+                    with st.spinner("Processing dataset..."):
+                        results = []
+                        for _, row in df.iterrows():
+                            input_dict = row.to_dict()
+                            try:
+                                response = requests.post(API_URL, json=input_dict, timeout=30)
+                                response.raise_for_status()
+                                result = response.json()
+                                results.append({
+                                    **input_dict,
+                                    "Prediction": result['prediction'],
+                                    "Probability_No": result['probability']['No'],
+                                    "Probability_Yes": result['probability']['Yes']
+                                })
+                            except requests.exceptions.RequestException as e:
+                                logger.warning(f"Failed to predict for row: {str(e)}")
+                                results.append({
+                                    **input_dict,
+                                    "Prediction": "Error",
+                                    "Probability_No": 0,
+                                    "Probability_Yes": 0
+                                })
+
+                        results_df = pd.DataFrame(results)
+                        st.session_state.dataset_predictions = {"results": results_df}
+
+        except Exception as e:
+            st.error(f"Dataset processing failed: {str(e)}")
+            logger.error(f"Dataset processing failed: {str(e)}")
+
+    if st.session_state.dataset_predictions:
+        results = st.session_state.dataset_predictions['results']
+        st.write("Prediction Results:", results)
+        st.download_button(
+            label="Download Results as CSV",
+            data=results.to_csv(index=False).encode('utf-8'),
+            file_name="cvd_predictions.csv",
+            mime="text/csv"
+        )
