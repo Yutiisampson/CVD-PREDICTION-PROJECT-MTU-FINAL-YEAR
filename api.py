@@ -5,24 +5,21 @@ from fastapi.middleware.cors import CORSMiddleware
 import joblib
 import pandas as pd
 import numpy as np
-import os
-from preprocessing import preprocess_input
+
+from preprocessing import preprocess_input 
+
 
 app = FastAPI()
 
-# CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        os.getenv("FRONTEND_URL", "https://cvdprediction-mtu.streamlit.app"),
-        "http://localhost:8501"
-    ],
+    allow_origins=["https://cvdprediction-mtu.streamlit.app/"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Pydantic model for input validation
+
 class PredictionInput(BaseModel):
     General_Health: str
     Checkup: str
@@ -43,24 +40,25 @@ class PredictionInput(BaseModel):
     Green_Vegetables_Consumption: int
     FriedPotato_Consumption: int
 
-# Load model and scaler
-model = joblib.load("random_forest_model.joblib")
+random_forest_model = joblib.load("random_forest_model.joblib")
 scaler = joblib.load("scaler.joblib")
 selected_features = joblib.load("selected_features.joblib")
+label_encoder  = joblib.load("label_encoder.joblib")
 
-# Health check endpoint
+# --- Health check endpoint ---
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
-# Prediction endpoint
 @app.post("/predict")
-async def predict(data: PredictionInput) -> Dict[str, Any]:
+def predict(data: PredictionInput) -> Dict[str, Any]:
     try:
         input_dict = data.dict()
         processed_input = preprocess_input(input_dict, selected_features, scaler, is_training=False)
-        prediction = model.predict(processed_input)[0]
-        prediction_proba = model.predict_proba(processed_input)[0]
+
+        prediction = random_forest_model.predict(processed_input)[0]
+        prediction_proba = random_forest_model.predict_proba(processed_input)[0]
+
         return {
             "prediction": "Yes" if prediction == 1 else "No",
             "probability": {
@@ -70,3 +68,4 @@ async def predict(data: PredictionInput) -> Dict[str, Any]:
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+
