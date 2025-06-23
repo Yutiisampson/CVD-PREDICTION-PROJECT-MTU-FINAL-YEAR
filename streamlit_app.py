@@ -1,18 +1,16 @@
 import streamlit as st
 import requests
-import pandas as pd
-import os
-import json
 
+# App title
 st.title("Cardiovascular Disease Prediction")
 
-API_URL = os.getenv("API_URL", "https://cvd-prediction-project-mtu-final-year-2.onrender.com/predict")
-
+# Session state initialization
 if "prediction_result" not in st.session_state:
     st.session_state.prediction_result = None
 if "submitted" not in st.session_state:
     st.session_state.submitted = False
 
+# Input form
 with st.form("prediction_form"):
     st.header("Patient Details")
     
@@ -39,17 +37,14 @@ with st.form("prediction_form"):
     green_vegetables = st.number_input("Green Vegetables (servings/month)", min_value=0, max_value=100, value=15)
     fried_potato = st.number_input("Fried Potatoes (servings/month)", min_value=0, max_value=100, value=4)
 
-    calculated_bmi = weight_kg / ((height_cm / 100) ** 2)
-    if abs(bmi - calculated_bmi) > 0.5:
-        st.warning(f"BMI ({bmi:.2f}) does not match height/weight ({calculated_bmi:.2f}).")
-
     submitted = st.form_submit_button("Predict")
 
     if submitted:
+      
         st.session_state.submitted = True
         st.session_state.prediction_result = None
 
-        inputs = {
+        cvd = {
             "General_Health": general_health,
             "Checkup": checkup,
             "Exercise": exercise,
@@ -70,20 +65,24 @@ with st.form("prediction_form"):
             "FriedPotato_Consumption": fried_potato
         }
 
-        st.write("**Debug: Input Data to API**", inputs)
+        API_URL = "https://cvd-prediction-project-mtu-final-year-2.onrender.com/predict"
 
         try:
             with st.spinner("Predicting..."):
-                response = requests.post(API_URL, json=inputs, timeout=30)
+                response = requests.post(API_URL, json=cvd, timeout=20)
                 response.raise_for_status()
                 result = response.json()
                 st.session_state.prediction_result = result
         except requests.exceptions.RequestException as e:
-            st.error(f"Prediction failed: {str(e)}")
+            st.error(f"Prediction failed: {e}")
+            st.session_state.prediction_result = None
 
-if st.session_state.submitted and st.session_state.prediction_result:
+# Show prediction result only if a valid result exists
+if st.session_state.submitted:
     result = st.session_state.prediction_result
-    st.success(f"Prediction: {result['prediction']}")
-    st.write(f"🟢 Probability of No Heart Disease: **{result['probability']['No']:.2%}**")
-    st.write(f"🔴 Probability of Heart Disease: **{result['probability']['Yes']:.2%}**")
-    st.write("**Full API Response**:", result)
+    if result:
+        st.success(f"Prediction: {result['prediction']}")
+        st.write(f"🟢 Probability of No Heart Disease: **{result['probability']['No']:.2%}**")
+        st.write(f"🔴 Probability of Heart Disease: **{result['probability']['Yes']:.2%}**")
+    else:
+        st.warning("No prediction result available.")
