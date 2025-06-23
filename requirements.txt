@@ -6,5 +6,4 @@ pandas
 numpy>=1.23  # Compatible with Python 3.11
 joblib
 FASTAPI==0.115.2
-pydantic==2.9.2
 python-dotenv==1.0.1
