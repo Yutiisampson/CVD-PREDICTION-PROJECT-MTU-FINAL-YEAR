@@ -2,14 +2,14 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
 def preprocess_input(data, selected_features, scaler, is_training=False):
-    input_df = pd.DataFrame([data] if isinstance(data, dict) else data)
+    cardio = pd.DataFrame([data] if isinstance(data, dict) else data)
     
     # Binary encoding (set to 0/1 directly)
     binary_cols = ['Exercise', 'Skin_Cancer', 'Other_Cancer', 'Depression', 'Arthritis', 'Smoking_History']
     for col in binary_cols:
-        input_df[col] = input_df[col].replace({'No': 0, 'Yes': 1})
+        cardio[col] = cardio[col].replace({'No': 0, 'Yes': 1})
     
-    input_df['Diabetes'] = input_df['Diabetes'].replace(
+    cardio['Diabetes'] = cardio['Diabetes'].replace(
         {
             'No': 0,
             'Yes': 1,
@@ -19,7 +19,7 @@ def preprocess_input(data, selected_features, scaler, is_training=False):
     )
     
     # Simplify Checkup
-    input_df['Checkup'] = input_df['Checkup'].replace(
+    cardio['Checkup'] = cardio['Checkup'].replace(
         {
             'Within the past year': 'In the past year',
             'Within the past 2 years': 'Within the last 2 years',
@@ -30,7 +30,7 @@ def preprocess_input(data, selected_features, scaler, is_training=False):
     )
     
     # Simplify Age_Category
-    input_df['Age_Category'] = input_df['Age_Category'].replace(
+    cardio['Age_Category'] = cardio['Age_Category'].replace(
         {
             '18-24': 'youth',
             '25-29': 'youth',
@@ -55,10 +55,10 @@ def preprocess_input(data, selected_features, scaler, is_training=False):
     # One-hot encode categorical features
     categorical_features = ['General_Health', 'Checkup', 'Exercise', 'Skin_Cancer', 'Other_Cancer', 
                             'Depression', 'Diabetes', 'Arthritis', 'Gender', 'Age_Category', 'Smoking_History']
-    input_categorical = pd.get_dummies(input_df[categorical_features], drop_first=True).astype(int)
+    input_categorical = pd.get_dummies(cardio[categorical_features], drop_first=True).astype(int)
     
     # Combine numerical and categorical
-    input_processed = pd.concat([input_df[numerical_cols], input_categorical], axis=1)
+    input_processed = pd.concat([cardio[numerical_cols], input_categorical], axis=1)
     
     # Align columns with selected_features
     for col in selected_features:
