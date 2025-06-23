@@ -1,24 +1,17 @@
 import pandas as pd
-import json
-import logging
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 def preprocess_input(data, selected_features, scaler, is_training=False):
     """
     Preprocess input data for CVD prediction.
     Args:
-        data: Dict or DataFrame with input features.
+        data: Dict with input features.
         selected_features: List of features expected by the model.
         scaler: Scikit-learn scaler object.
         is_training: Boolean to toggle scaling (False for inference).
     Returns:
         Processed and scaled DataFrame.
     """
-    logger.info("Preprocessing input data")
-    cardio = pd.DataFrame([data] if isinstance(data, dict) else data)
-    logger.info(f"Raw input: {json.dumps(cardio.to_dict(orient='records'), indent=2)}")
+    cardio = pd.DataFrame([data])
 
     # Validate required columns
     required_cols = [
@@ -30,7 +23,6 @@ def preprocess_input(data, selected_features, scaler, is_training=False):
     ]
     missing_cols = [col for col in required_cols if col not in cardio.columns]
     if missing_cols:
-        logger.error(f"Missing columns: {missing_cols}")
         raise ValueError(f"Missing columns: {missing_cols}")
 
     # Binary features (case-insensitive)
@@ -115,12 +107,9 @@ def preprocess_input(data, selected_features, scaler, is_training=False):
         if age in age_map and age_map[age] in selected_features:
             input_processed.loc[idx, age_map[age]] = 1.0
 
-    logger.info(f"Processed features: {json.dumps(input_processed.to_dict(orient='records'), indent=2)}")
-
     # Scale numerical features
     if not is_training:
         numerical_indices = [selected_features.index(col) for col in numerical_cols if col in selected_features]
         input_processed.iloc[:, numerical_indices] = scaler.transform(input_processed.iloc[:, numerical_indices])
-        logger.info(f"Scaled features: {json.dumps(input_processed.to_dict(orient='records'), indent=2)}")
 
     return input_processed
