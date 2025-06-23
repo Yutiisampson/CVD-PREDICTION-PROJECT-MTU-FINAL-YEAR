@@ -1,115 +1,68 @@
 import pandas as pd
+import numpy as np
 
 def preprocess_input(data, selected_features, scaler, is_training=False):
-    """
-    Preprocess input data for CVD prediction.
-    Args:
-        data: Dict with input features.
-        selected_features: List of features expected by the model.
-        scaler: Scikit-learn scaler object.
-        is_training: Boolean to toggle scaling (False for inference).
-    Returns:
-        Processed and scaled DataFrame.
-    """
-    cardio = pd.DataFrame([data])
+    cardio = pd.DataFrame([data] if isinstance(data, dict) else data)
 
-    # Validate required columns
-    required_cols = [
-        'General_Health', 'Checkup', 'Exercise', 'Skin_Cancer', 'Other_Cancer',
-        'Depression', 'Diabetes', 'Arthritis', 'Gender', 'Age_Category',
-        'Height_cm', 'Weight_kg', 'BMI', 'Smoking_History',
-        'Alcohol_Consumption', 'Fruit_Consumption',
-        'Green_Vegetables_Consumption', 'FriedPotato_Consumption'
-    ]
-    missing_cols = [col for col in required_cols if col not in cardio.columns]
-    if missing_cols:
-        raise ValueError(f"Missing columns: {missing_cols}")
-
-    # Binary features (case-insensitive)
+    # Binary encoding
     binary_cols = ['Exercise', 'Skin_Cancer', 'Other_Cancer', 'Depression', 'Arthritis', 'Smoking_History']
     for col in binary_cols:
-        cardio[col] = cardio[col].str.lower().map({'no': 0, 'yes': 1}).fillna(0)
+        cardio[col] = cardio[col].map({'No': 0, 'Yes': 1})
 
-    # Diabetes (case-insensitive)
-    cardio['Diabetes'] = cardio['Diabetes'].str.lower().map({
-        'no': 0, 'yes': 1, 'no, pre-diabetes or borderline diabetes': 0,
-        'yes, but female told only during pregnancy': 1
-    }).fillna(0)
+    # Diabetes simplified
+    cardio['Diabetes'] = cardio['Diabetes'].map({
+        'No': 0,
+        'Yes': 1,
+        'No, pre-diabetes or borderline diabetes': 0,
+        'Yes, but female told only during pregnancy': 1
+    })
 
     # Checkup normalization
-    checkup_map = {
-        'within the past year': 'in the past year',
-        'within the past 2 years': 'within the last 2 years',
-        'within the past 5 years': 'in the last 5 years',
+    cardio['Checkup'] = cardio['Checkup'].replace({
+        'Within the past year': 'In the past year',
+        'Within the past 2 years': 'Within the last 2 years',
+        'Within the past 5 years': 'In the last 5 years',
         '5 or more years ago': '5 years or longer ago',
-        'never': 'never'
-    }
-    cardio['Checkup'] = cardio['Checkup'].str.lower().map(checkup_map).fillna('in the past year')
+        'Never': 'Never'
+    })
 
     # Age category grouping
-    age_map = {
+    cardio['Age_Category'] = cardio['Age_Category'].replace({
         '18-24': 'youth', '25-29': 'youth',
         '30-34': 'young_adults', '35-39': 'young_adults',
         '40-44': 'adults', '45-49': 'adults',
         '50-54': 'middle_aged', '55-59': 'middle_aged',
         '60-64': 'middle_aged', '65-69': 'middle_aged',
         '70-74': 'old', '75-79': 'old', '80+': 'old'
-    }
-    cardio['Age_Category'] = cardio['Age_Category'].map(age_map).fillna('youth')
+    })
 
-    # Numerical features
+    # Numerical columns
     numerical_cols = [
-        'Height_cm', 'Weight_kg', 'BMI', 'Alcohol_Consumption',
-        'Fruit_Consumption', 'Green_Vegetables_Consumption', 'FriedPotato_Consumption'
+        'Height_cm', 'Weight_kg', 'BMI',
+        'Alcohol_Consumption', 'Fruit_Consumption',
+        'Green_Vegetables_Consumption', 'FriedPotato_Consumption'
     ]
-    for col in numerical_cols:
-        cardio[col] = pd.to_numeric(cardio[col], errors='coerce').fillna(cardio[col].mean())
 
-    # Initialize processed DataFrame
-    input_processed = pd.DataFrame(index=cardio.index, columns=selected_features).fillna(0.0)
-    
-    # Copy numerical and binary features
-    input_processed[numerical_cols + binary_cols + ['Diabetes']] = cardio[numerical_cols + binary_cols + ['Diabetes']]
+    # One-hot encode
+    categorical_cols = [
+        'General_Health', 'Checkup', 'Gender', 'Age_Category'
+    ]
+    dummies = pd.get_dummies(cardio[categorical_cols], drop_first=True)
 
-    # Manual one-hot encoding
-    for idx in cardio.index:
-        gh = cardio.loc[idx, 'General_Health'].lower()
-        general_health_map = {
-            'poor': 'General_Health_Poor', 'fair': 'General_Health_Fair',
-            'good': 'General_Health_Good', 'very good': 'General_Health_Very Good',
-            'excellent': None
-        }
-        if gh in general_health_map and general_health_map[gh] in selected_features:
-            input_processed.loc[idx, general_health_map[gh]] = 1.0
+    # Binary + numerical + encoded categorical
+    input_processed = pd.concat([cardio[numerical_cols + binary_cols + ['Diabetes']], dummies], axis=1)
 
-        chk = cardio.loc[idx, 'Checkup']
-        checkup_map = {
-            'in the past year': None,
-            'within the last 2 years': 'Checkup_Within the last 2 years',
-            'in the last 5 years': 'Checkup_In the last 5 years',
-            '5 years or longer ago': 'Checkup_5 years or longer ago',
-            'never': 'Checkup_Never'
-        }
-        if chk in checkup_map and checkup_map[chk] in selected_features:
-            input_processed.loc[idx, checkup_map[chk]] = 1.0
+    # Ensure all selected features exist
+    for col in selected_features:
+        if col not in input_processed.columns:
+            input_processed[col] = 0
 
-        if cardio.loc[idx, 'Gender'].lower() == 'male' and 'Gender_Male' in selected_features:
-            input_processed.loc[idx, 'Gender_Male'] = 1.0
+    # Reorder and convert to float
+    input_processed = input_processed[selected_features].astype(float)
 
-        age = cardio.loc[idx, 'Age_Category']
-        age_map = {
-            'youth': None,
-            'young_adults': 'Age_Category_young_adults',
-            'adults': 'Age_Category_adults',
-            'middle_aged': 'Age_Category_middle_aged',
-            'old': 'Age_Category_old'
-        }
-        if age in age_map and age_map[age] in selected_features:
-            input_processed.loc[idx, age_map[age]] = 1.0
-
-    # Scale numerical features
+    # Scale
     if not is_training:
-        numerical_indices = [selected_features.index(col) for col in numerical_cols if col in selected_features]
-        input_processed.iloc[:, numerical_indices] = scaler.transform(input_processed.iloc[:, numerical_indices])
+        input_scaled = scaler.transform(input_processed)
+        return pd.DataFrame(input_scaled, columns=selected_features)
 
     return input_processed
