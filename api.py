@@ -5,12 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import joblib
 import pandas as pd
 import numpy as np
-import logging
 import os
 from preprocessing import preprocess_input
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -48,14 +44,9 @@ class PredictionInput(BaseModel):
     FriedPotato_Consumption: int
 
 # Load model and scaler
-try:
-    model = joblib.load("random_forest_model.joblib")
-    scaler = joblib.load("scaler.joblib")
-    selected_features = joblib.load("selected_features.joblib")
-    logger.info("Model, scaler, and selected features loaded successfully")
-except Exception as e:
-    logger.error(f"Failed to load artifacts: {e}")
-    raise RuntimeError(f"Failed to load model or scaler: {e}")
+model = joblib.load("random_forest_model.joblib")
+scaler = joblib.load("scaler.joblib")
+selected_features = joblib.load("selected_features.joblib")
 
 # Health check endpoint
 @app.get("/health")
@@ -65,13 +56,11 @@ def health():
 # Prediction endpoint
 @app.post("/predict")
 async def predict(data: PredictionInput) -> Dict[str, Any]:
-    logger.info(f"Received prediction request with input: {data.dict()}")
     try:
         input_dict = data.dict()
         processed_input = preprocess_input(input_dict, selected_features, scaler, is_training=False)
         prediction = model.predict(processed_input)[0]
         prediction_proba = model.predict_proba(processed_input)[0]
-        logger.info(f"Prediction: {prediction}, Probabilities: {prediction_proba.tolist()}")
         return {
             "prediction": "Yes" if prediction == 1 else "No",
             "probability": {
@@ -80,5 +69,4 @@ async def predict(data: PredictionInput) -> Dict[str, Any]:
             }
         }
     except Exception as e:
-        logger.error(f"Prediction failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
