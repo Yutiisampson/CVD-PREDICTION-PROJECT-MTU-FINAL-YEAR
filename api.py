@@ -9,13 +9,12 @@ import logging
 import os
 from preprocessing import preprocess_input
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-# CORS configuration for Render and local testing
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -48,14 +47,13 @@ class PredictionInput(BaseModel):
     Green_Vegetables_Consumption: int
     FriedPotato_Consumption: int
 
-# Load model and artifacts
+# Load model and scaler
 try:
-    random_forest_model = joblib.load("random_forest_model.joblib")
+    model = joblib.load("random_forest_model.joblib")
     scaler = joblib.load("scaler.joblib")
     selected_features = joblib.load("selected_features.joblib")
-    label_encoder = joblib.load("label_encoder.joblib")
-    logger.info("Model and artifacts loaded successfully")
-except FileNotFoundError as e:
+    logger.info("Model, scaler, and selected features loaded successfully")
+except Exception as e:
     logger.error(f"Failed to load artifacts: {e}")
     raise RuntimeError(f"Failed to load model or scaler: {e}")
 
@@ -71,8 +69,8 @@ async def predict(data: PredictionInput) -> Dict[str, Any]:
     try:
         input_dict = data.dict()
         processed_input = preprocess_input(input_dict, selected_features, scaler, is_training=False)
-        prediction = random_forest_model.predict(processed_input)[0]
-        prediction_proba = random_forest_model.predict_proba(processed_input)[0]
+        prediction = model.predict(processed_input)[0]
+        prediction_proba = model.predict_proba(processed_input)[0]
         logger.info(f"Prediction: {prediction}, Probabilities: {prediction_proba.tolist()}")
         return {
             "prediction": "Yes" if prediction == 1 else "No",
