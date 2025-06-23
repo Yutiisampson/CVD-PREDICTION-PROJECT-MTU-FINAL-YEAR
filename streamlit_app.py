@@ -44,7 +44,7 @@ with st.form("prediction_form"):
         st.session_state.submitted = True
         st.session_state.prediction_result = None
 
-        input_data = {
+        cvd = {
             "General_Health": general_health,
             "Checkup": checkup,
             "Exercise": exercise,
