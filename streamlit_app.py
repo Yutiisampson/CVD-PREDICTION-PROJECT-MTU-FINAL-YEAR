@@ -69,7 +69,7 @@ with st.form("prediction_form"):
 
         try:
             with st.spinner("Predicting..."):
-                response = requests.post(API_URL, json=input_data, timeout=20)
+                response = requests.post(API_URL, json=cvd, timeout=20)
                 response.raise_for_status()
                 result = response.json()
                 st.session_state.prediction_result = result
