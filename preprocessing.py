@@ -47,7 +47,7 @@ def preprocess_input(data, selected_features, scaler, is_training=False):
     categorical_cols = [
         'General_Health', 'Checkup', 'Gender', 'Age_Category'
     ]
-    dummies = pd.get_dummies(cardio[categorical_cols], drop_first=True)
+    dummies = pd.get_dummies(cardio[categorical_cols], drop_first=False)
 
     # Binary + numerical + encoded categorical
     input_processed = pd.concat([cardio[numerical_cols + binary_cols + ['Diabetes']], dummies], axis=1)
