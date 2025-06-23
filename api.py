@@ -1,52 +1,33 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Dict, Any
+from fastapi.middleware.cors import CORSMiddleware
 import joblib
+import pandas as pd
+import numpy as np
+import logging
 import os
 from preprocessing import preprocess_input
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = FastAPI()
 
-# CORS middleware
+# CORS configuration for Render and local testing
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://cvdprediction-mtu.streamlit.app"],
+    allow_origins=[
+        os.getenv("FRONTEND_URL", "https://cvdprediction-mtu.streamlit.app"),
+        "http://localhost:8501"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Health check
-@app.get("/health")
-def health_check():
-    return {"status": "ok"}
-
-# Load models
-required_files = {
-    "model": "random_forest_model.joblib",
-    "scaler": "scaler.joblib",
-    "label_encoder": "label_encoder.joblib",
-    "selected_features": "selected_features.joblib"
-}
-
-loaded_objects = {}
-missing = []
-
-for key, path in required_files.items():
-    if os.path.exists(path):
-        loaded_objects[key] = joblib.load(path)
-    else:
-        missing.append(path)
-
-if missing:
-    raise RuntimeError(f"Missing files: {', '.join(missing)}")
-
-model = loaded_objects["model"]
-scaler = loaded_objects["scaler"]
-label_encoder = loaded_objects["label_encoder"]
-selected_features = loaded_objects["selected_features"]
-
-# Input model
+# Pydantic model for input validation
 class PredictionInput(BaseModel):
     General_Health: str
     Checkup: str
@@ -67,22 +48,39 @@ class PredictionInput(BaseModel):
     Green_Vegetables_Consumption: int
     FriedPotato_Consumption: int
 
+# Load model and artifacts
+try:
+    random_forest_model = joblib.load("random_forest_model.joblib")
+    scaler = joblib.load("scaler.joblib")
+    selected_features = joblib.load("selected_features.joblib")
+    label_encoder = joblib.load("label_encoder.joblib")
+    logger.info("Model and artifacts loaded successfully")
+except FileNotFoundError as e:
+    logger.error(f"Failed to load artifacts: {e}")
+    raise RuntimeError(f"Failed to load model or scaler: {e}")
+
+# Health check endpoint
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 # Prediction endpoint
 @app.post("/predict")
-async def predict(data: PredictionInput):
+async def predict(data: PredictionInput) -> Dict[str, Any]:
+    logger.info(f"Received prediction request with input: {data.dict()}")
     try:
-        input_processed = preprocess_input(data.dict(), selected_features, scaler)
-        prediction = model.predict(input_processed)
-        prediction_proba = model.predict_proba(input_processed)[0]
-        prediction_label = label_encoder.inverse_transform(prediction)[0]
-
+        input_dict = data.dict()
+        processed_input = preprocess_input(input_dict, selected_features, scaler, is_training=False)
+        prediction = random_forest_model.predict(processed_input)[0]
+        prediction_proba = random_forest_model.predict_proba(processed_input)[0]
+        logger.info(f"Prediction: {prediction}, Probabilities: {prediction_proba.tolist()}")
         return {
-            "prediction": prediction_label,
+            "prediction": "Yes" if prediction == 1 else "No",
             "probability": {
+                "Yes": float(prediction_proba[1]),
                 "No": float(prediction_proba[0]),
-                "Yes": float(prediction_proba[1])
             }
         }
-
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error processing input: {str(e)}")
+        logger.error(f"Prediction failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
