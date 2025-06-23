@@ -5,25 +5,12 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Predefined selected features (avoiding joblib dependency)
-SELECTED_FEATURES = [
-    'Height_cm', 'Weight_kg', 'BMI', 'Alcohol_Consumption', 'Fruit_Consumption',
-    'Green_Vegetables_Consumption', 'FriedPotato_Consumption',
-    'Exercise', 'Skin_Cancer', 'Other_Cancer', 'Depression', 'Arthritis',
-    'Smoking_History', 'Diabetes',
-    'General_Health_Fair', 'General_Health_Good', 'General_Health_Poor',
-    'General_Health_Very Good', 'Checkup_In the last 5 years',
-    'Checkup_Never', 'Checkup_Within the last 2 years',
-    'Checkup_5 years or longer ago', 'Gender_Male',
-    'Age_Category_adults', 'Age_Category_middle_aged', 'Age_Category_old',
-    'Age_Category_young_adults'
-]
-
-def preprocess_input(data, scaler, is_training=False):
+def preprocess_input(data, selected_features, scaler, is_training=False):
     """
     Preprocess input data for CVD prediction.
     Args:
         data: Dict or DataFrame with input features.
+        selected_features: List of features expected by the model.
         scaler: Scikit-learn scaler object.
         is_training: Boolean to toggle scaling (False for inference).
     Returns:
@@ -87,7 +74,7 @@ def preprocess_input(data, scaler, is_training=False):
         cardio[col] = pd.to_numeric(cardio[col], errors='coerce').fillna(cardio[col].mean())
 
     # Initialize processed DataFrame
-    input_processed = pd.DataFrame(index=cardio.index, columns=SELECTED_FEATURES).fillna(0.0)
+    input_processed = pd.DataFrame(index=cardio.index, columns=selected_features).fillna(0.0)
     
     # Copy numerical and binary features
     input_processed[numerical_cols + binary_cols + ['Diabetes']] = cardio[numerical_cols + binary_cols + ['Diabetes']]
@@ -100,7 +87,7 @@ def preprocess_input(data, scaler, is_training=False):
             'good': 'General_Health_Good', 'very good': 'General_Health_Very Good',
             'excellent': None
         }
-        if gh in general_health_map and general_health_map[gh]:
+        if gh in general_health_map and general_health_map[gh] in selected_features:
             input_processed.loc[idx, general_health_map[gh]] = 1.0
 
         chk = cardio.loc[idx, 'Checkup']
@@ -111,10 +98,10 @@ def preprocess_input(data, scaler, is_training=False):
             '5 years or longer ago': 'Checkup_5 years or longer ago',
             'never': 'Checkup_Never'
         }
-        if chk in checkup_map and checkup_map[chk]:
+        if chk in checkup_map and checkup_map[chk] in selected_features:
             input_processed.loc[idx, checkup_map[chk]] = 1.0
 
-        if cardio.loc[idx, 'Gender'].lower() == 'male':
+        if cardio.loc[idx, 'Gender'].lower() == 'male' and 'Gender_Male' in selected_features:
             input_processed.loc[idx, 'Gender_Male'] = 1.0
 
         age = cardio.loc[idx, 'Age_Category']
@@ -125,14 +112,14 @@ def preprocess_input(data, scaler, is_training=False):
             'middle_aged': 'Age_Category_middle_aged',
             'old': 'Age_Category_old'
         }
-        if age in age_map and age_map[age]:
+        if age in age_map and age_map[age] in selected_features:
             input_processed.loc[idx, age_map[age]] = 1.0
 
     logger.info(f"Processed features: {json.dumps(input_processed.to_dict(orient='records'), indent=2)}")
 
     # Scale numerical features
     if not is_training:
-        numerical_indices = [SELECTED_FEATURES.index(col) for col in numerical_cols]
+        numerical_indices = [selected_features.index(col) for col in numerical_cols if col in selected_features]
         input_processed.iloc[:, numerical_indices] = scaler.transform(input_processed.iloc[:, numerical_indices])
         logger.info(f"Scaled features: {json.dumps(input_processed.to_dict(orient='records'), indent=2)}")
 
