@@ -6,20 +6,140 @@ import joblib
 import pandas as pd
 import numpy as np
 
-from preprocessing import preprocess_input 
-
-
 app = FastAPI()
 
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://cvdprediction-mtu.streamlit.app/"],
+    allow_origins=["https://cvdprediction-mtu.streamlit.app", "http://localhost:8501"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Manual encoding mappings
+GENERAL_HEALTH_MAPPING = {
+    'Poor': [1, 0, 0, 0],
+    'Fair': [0, 1, 0, 0],
+    'Good': [0, 0, 1, 0],
+    'Very Good': [0, 0, 0, 1],
+    'Excellent': [0, 0, 0, 0]  # Reference category
+}
 
+CHECKUP_MAPPING = {
+    'In the past year': [1, 0, 0, 0],
+    'Within the last 2 years': [0, 1, 0, 0],
+    'In the last 5 years': [0, 0, 1, 0],
+    '5 years or longer ago': [0, 0, 0, 1],
+    'Never': [0, 0, 0, 0]  # Reference category
+}
+
+GENDER_MAPPING = {
+    'Male': [1],
+    'Female': [0]  # Reference category
+}
+
+AGE_CATEGORY_MAPPING = {
+    'youth': [1, 0, 0, 0],
+    'young_adults': [0, 1, 0, 0],
+    'adults': [0, 0, 1, 0],
+    'middle_aged': [0, 0, 0, 1],
+    'old': [0, 0, 0, 0]  # Reference category
+}
+
+# Preprocessing function with manual encoding
+def preprocess_input(data, selected_features, scaler, is_training=False):
+    cardio = pd.DataFrame([data] if isinstance(data, dict) else data)
+
+    # Binary encoding
+    binary_cols = ['Exercise', 'Skin_Cancer', 'Other_Cancer', 'Depression', 'Arthritis', 'Smoking_History']
+    for col in binary_cols:
+        cardio[col] = cardio[col].map({'No': 0, 'Yes': 1})
+
+    # Diabetes simplified
+    cardio['Diabetes'] = cardio['Diabetes'].map({
+        'No': 0,
+        'Yes': 1,
+        'No, pre-diabetes or borderline diabetes': 0,
+        'Yes, but female told only during pregnancy': 1
+    })
+
+    # Checkup normalization
+    cardio['Checkup'] = cardio['Checkup'].replace({
+        'Within the past year': 'In the past year',
+        'Within the past 2 years': 'Within the last 2 years',
+        'Within the past 5 years': 'In the last 5 years',
+        '5 or more years ago': '5 years or longer ago',
+        'Never': 'Never'
+    })
+
+    # Age category grouping
+    cardio['Age_Category'] = cardio['Age_Category'].replace({
+        '18-24': 'youth', '25-29': 'youth',
+        '30-34': 'young_adults', '35-39': 'young_adults',
+        '40-44': 'adults', '45-49': 'adults',
+        '50-54': 'middle_aged', '55-59': 'middle_aged',
+        '60-64': 'middle_aged', '65-69': 'middle_aged',
+        '70-74': 'old', '75-79': 'old', '80+': 'old'
+    })
+
+    # Numerical columns
+    numerical_cols = [
+        'Height_cm', 'Weight_kg', 'BMI',
+        'Alcohol_Consumption', 'Fruit_Consumption',
+        'Green_Vegetables_Consumption', 'FriedPotato_Consumption'
+    ]
+
+    # Manual encoding for categorical columns
+    # General Health
+    general_health_cols = ['General_Health_Poor', 'General_Health_Fair', 'General_Health_Good', 'General_Health_Very Good']
+    cardio[general_health_cols] = cardio['General_Health'].apply(
+        lambda x: GENERAL_HEALTH_MAPPING.get(x, [0, 0, 0, 0])
+    ).tolist()
+
+    # Checkup
+    checkup_cols = [
+        'Checkup_In the past year', 'Checkup_Within the last 2 years',
+        'Checkup_In the last 5 years', 'Checkup_5 years or longer ago'
+    ]
+    cardio[checkup_cols] = cardio['Checkup'].apply(
+        lambda x: CHECKUP_MAPPING.get(x, [0, 0, 0, 0])
+    ).tolist()
+
+    # Gender
+    gender_cols = ['Gender_Male']
+    cardio[gender_cols] = cardio['Gender'].apply(
+        lambda x: GENDER_MAPPING.get(x, [0])
+    ).tolist()
+
+    # Age Category
+    age_cols = ['Age_Category_youth', 'Age_Category_young_adults', 'Age_Category_adults', 'Age_Category_middle_aged']
+    cardio[age_cols] = cardio['Age_Category'].apply(
+        lambda x: AGE_CATEGORY_MAPPING.get(x, [0, 0, 0, 0])
+    ).tolist()
+
+    # Combine numerical, binary, and encoded categorical columns
+    input_processed = pd.concat([
+        cardio[numerical_cols + binary_cols + ['Diabetes']],
+        cardio[general_health_cols + checkup_cols + gender_cols + age_cols]
+    ], axis=1)
+
+    # Ensure all selected features exist
+    for col in selected_features:
+        if col not in input_processed.columns:
+            input_processed[col] = 0
+
+    # Reorder and convert to float
+    input_processed = input_processed[selected_features].astype(float)
+
+    # Scale
+    if not is_training:
+        input_scaled = scaler.transform(input_processed)
+        return pd.DataFrame(input_scaled, columns=selected_features)
+
+    return input_processed
+
+# Input model
 class PredictionInput(BaseModel):
     General_Health: str
     Checkup: str
@@ -40,25 +160,24 @@ class PredictionInput(BaseModel):
     Green_Vegetables_Consumption: int
     FriedPotato_Consumption: int
 
+# Load models and artifacts
 random_forest_model = joblib.load("random_forest_model.joblib")
 scaler = joblib.load("scaler.joblib")
 selected_features = joblib.load("selected_features.joblib")
-label_encoder  = joblib.load("label_encoder.joblib")
 
-# --- Health check endpoint ---
+# Health check endpoint
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
+# Prediction endpoint
 @app.post("/predict")
 def predict(data: PredictionInput) -> Dict[str, Any]:
     try:
         input_dict = data.dict()
         processed_input = preprocess_input(input_dict, selected_features, scaler, is_training=False)
-
         prediction = random_forest_model.predict(processed_input)[0]
         prediction_proba = random_forest_model.predict_proba(processed_input)[0]
-
         return {
             "prediction": "Yes" if prediction == 1 else "No",
             "probability": {
@@ -68,4 +187,3 @@ def predict(data: PredictionInput) -> Dict[str, Any]:
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
-
