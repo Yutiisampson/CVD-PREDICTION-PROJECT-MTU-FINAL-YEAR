@@ -1,3 +1,4 @@
+# main.py
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any
@@ -23,7 +24,7 @@ GENERAL_HEALTH_MAPPING = {
     'Fair': [0, 1, 0, 0],
     'Good': [0, 0, 1, 0],
     'Very Good': [0, 0, 0, 1],
-    'Excellent': [0, 0, 0, 0]  # Reference category
+    'Excellent': [0, 0, 0, 0]
 }
 
 CHECKUP_MAPPING = {
@@ -31,12 +32,12 @@ CHECKUP_MAPPING = {
     'Within the last 2 years': [0, 1, 0, 0],
     'In the last 5 years': [0, 0, 1, 0],
     '5 years or longer ago': [0, 0, 0, 1],
-    'Never': [0, 0, 0, 0]  # Reference category
+    'Never': [0, 0, 0, 0]
 }
 
 GENDER_MAPPING = {
     'Male': [1],
-    'Female': [0]  # Reference category
+    'Female': [0]
 }
 
 AGE_CATEGORY_MAPPING = {
@@ -44,10 +45,10 @@ AGE_CATEGORY_MAPPING = {
     'young_adults': [0, 1, 0, 0],
     'adults': [0, 0, 1, 0],
     'middle_aged': [0, 0, 0, 1],
-    'old': [0, 0, 0, 0]  # Reference category
+    'old': [0, 0, 0, 0]
 }
 
-# Preprocessing function with manual encoding
+# Preprocessing function
 def preprocess_input(data, selected_features, scaler, is_training=False):
     cardio = pd.DataFrame([data] if isinstance(data, dict) else data)
 
@@ -119,7 +120,7 @@ def preprocess_input(data, selected_features, scaler, is_training=False):
         if cardio[col].isna().any():
             raise ValueError(f"Invalid numerical values in {col}")
 
-    # Manual encoding for categorical columns
+    # Manual encoding
     general_health_cols = ['General_Health_Poor', 'General_Health_Fair', 'General_Health_Good', 'General_Health_Very Good']
     if not cardio['General_Health'].isin(GENERAL_HEALTH_MAPPING.keys()).all():
         raise ValueError(f"Invalid values in General_Health: must be one of {list(GENERAL_HEALTH_MAPPING.keys())}")
@@ -147,7 +148,13 @@ def preprocess_input(data, selected_features, scaler, is_training=False):
         lambda x: AGE_CATEGORY_MAPPING[x]
     ).tolist()
 
-    # Combine numerical, binary, and encoded categorical columns
+    # Debug encoded features
+    print("Encoded General_Health:", cardio[general_health_cols].values)
+    print("Encoded Age_Category:", cardio[age_cols].values)
+    print("Encoded Diabetes:", cardio['Diabetes'].values)
+    print("Encoded Smoking_History:", cardio['Smoking_History'].values)
+
+    # Combine columns
     input_processed = pd.concat([
         cardio[numerical_cols + binary_cols + ['Diabetes']],
         cardio[general_health_cols + checkup_cols + gender_cols + age_cols]
@@ -194,6 +201,8 @@ try:
     random_forest_model = joblib.load("random_forest_model.joblib")
     scaler = joblib.load("scaler.joblib")
     selected_features = joblib.load("selected_features.joblib")
+    print("Selected features:", selected_features)
+    print("Feature importances:", dict(zip(selected_features, random_forest_model.feature_importances_)))
 except FileNotFoundError as e:
     raise RuntimeError(f"Failed to load model or artifacts: {str(e)}")
 
@@ -207,13 +216,11 @@ def health():
 def predict(data: PredictionInput) -> Dict[str, Any]:
     try:
         input_dict = data.dict()
-        # Log input for debugging
         print("Received input:", input_dict)
         processed_input = preprocess_input(input_dict, selected_features, scaler, is_training=False)
-        # Log processed input columns and values
         print("Processed input columns:", processed_input.columns.tolist())
-        print("Processed input values:", processed_input.values)
-        # Convert to NumPy array to remove feature names
+        print("Raw processed values:", processed_input.values)
+        print("Scaled input values:", processed_input.to_numpy())
         processed_input_array = processed_input.to_numpy()
         prediction = random_forest_model.predict(processed_input_array)[0]
         prediction_proba = random_forest_model.predict_proba(processed_input_array)[0]
@@ -224,7 +231,6 @@ def predict(data: PredictionInput) -> Dict[str, Any]:
                 "No": float(prediction_proba[0]),
             }
         }
-        # Log response
         print("Prediction response:", response)
         return response
     except Exception as e:
