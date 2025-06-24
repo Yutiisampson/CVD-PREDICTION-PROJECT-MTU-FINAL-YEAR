@@ -162,7 +162,7 @@ def preprocess_input(data, selected_features, scaler=None, is_training=False):
         return input_scaled
 
 # Load dataset from GitHub
-GITHUB_RAW_URL = "https://raw.githubusercontent.com/yourusername/cvd_prediction_project/main/training/data/heart_disease_data.csv"  # Replace with your URL
+GITHUB_RAW_URL = "https://github.com/Yutiisampson/CVD-PREDICTION-PROJECT-MTU-FINAL-YEAR/blob/main/CVDdata_mini.csv"  # Replace with your URL
 try:
     response = requests.get(GITHUB_RAW_URL)
     response.raise_for_status()
