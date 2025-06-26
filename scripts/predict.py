@@ -6,7 +6,7 @@ from io import StringIO
 from preprocessing import preprocess_input 
 
 
-GITHUB_RAW_URL = "https://raw.githubusercontent.com/yourusername/CVD_Final_Year_Project_MTU/main/data/CVDdata_mini.csv"  # Replace with your URL
+GITHUB_RAW_URL = "https://github.com/Yutiisampson/CVD-PREDICTION-PROJECT-MTU-FINAL-YEAR/blob/main/data/CVDdata_mini.csv" 
 try:
     response = requests.get(GITHUB_RAW_URL)
     response.raise_for_status()
@@ -15,7 +15,7 @@ try:
 except Exception as e:
     raise RuntimeError(f"Failed to load dataset from GitHub: {str(e)}")
 
-# Load model artifacts
+
 try:
     model = joblib.load("../models/random_forest_model.joblib")
     scaler = joblib.load("../models/scaler.joblib")
@@ -25,7 +25,7 @@ try:
 except FileNotFoundError as e:
     raise RuntimeError(f"Failed to load model artifacts: {str(e)}")
 
-# High-risk input for testing
+
 test_input = {
     "General_Health": "Poor",
     "Checkup": "In the past year",
@@ -47,7 +47,7 @@ test_input = {
     "FriedPotato_Consumption": 15
 }
 
-# Preprocess and predict
+
 try:
     print("Test input:", test_input)
     processed_input = preprocess_input(test_input, selected_features, scaler, is_training=False)
