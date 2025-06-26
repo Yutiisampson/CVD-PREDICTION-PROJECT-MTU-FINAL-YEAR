@@ -5,7 +5,7 @@ from sklearn.preprocessing import StandardScaler
 import os
 
 # Download from GitHub
-url = "https://raw.githubusercontent.com/utibeabasi913/cardio-data/main/cardio_data.csv"
+url = "https://github.com/Yutiisampson/CVD-PREDICTION-PROJECT-MTU-FINAL-YEAR/blob/main/data/CVDdata_mini.csv"
 df = pd.read_csv(url)
 
 # Split X and y
