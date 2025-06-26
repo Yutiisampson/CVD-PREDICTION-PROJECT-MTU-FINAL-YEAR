@@ -38,9 +38,9 @@ model = RandomForestClassifier(random_state=42, n_estimators=200, max_depth=10, 
 model.fit(X_processed, y)
 
 # Save model and artifacts
-joblib.dump(model, "../models/random_forest_model.joblib")
-joblib.dump(scaler, "../models/scaler.joblib")
-joblib.dump(selected_features, "../models/selected_features.joblib")
+joblib.dump(model, "/models/random_forest_model.joblib")
+joblib.dump(scaler, "/models/scaler.joblib")
+joblib.dump(selected_features, "/models/selected_features.joblib")
 
 print("Class distribution:", y.value_counts())
 print("Feature importances:", dict(zip(selected_features, model.feature_importances_)))
