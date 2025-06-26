@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import joblib
 import pandas as pd
 import numpy as np
+import os
 from scripts.preprocessing import preprocess_input
 
 app = FastAPI()
@@ -39,15 +40,20 @@ class PredictionInput(BaseModel):
     Green_Vegetables_Consumption: int
     FriedPotato_Consumption: int
 
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_DIR = os.path.join(BASE_DIR, "models")
 
 try:
-    random_forest_model = joblib.load("/models/random_forest_model.joblib")
-    scaler = joblib.load("/models/scaler.joblib")
-    selected_features = joblib.load("/models/selected_features.joblib")
+    random_forest_model = joblib.load(os.path.join(MODEL_DIR, "random_forest_model.joblib"))
+    scaler = joblib.load(os.path.join(MODEL_DIR, "scaler.joblib"))
+    selected_features = joblib.load(os.path.join(MODEL_DIR, "selected_features.joblib"))
     print("Selected features:", selected_features)
     print("Feature importances:", dict(zip(selected_features, random_forest_model.feature_importances_)))
 except FileNotFoundError as e:
     raise RuntimeError(f"Failed to load model or artifacts: {str(e)}")
+
 
 
 @app.get("/health")
