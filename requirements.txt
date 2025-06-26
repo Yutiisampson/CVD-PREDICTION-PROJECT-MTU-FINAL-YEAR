@@ -1,8 +1,0 @@
-streamlit
-requests
-uvicorn
-scikit-learn==1.4.2
-pandas
-numpy>=1.23  # Compatible with Python 3.11
-joblib
-FASTAPI==0.115.2
