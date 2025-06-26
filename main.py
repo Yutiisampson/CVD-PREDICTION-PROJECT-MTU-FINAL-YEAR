@@ -41,9 +41,9 @@ class PredictionInput(BaseModel):
 
 
 try:
-    random_forest_model = joblib.load("../models/random_forest_model.joblib")
-    scaler = joblib.load("../models/scaler.joblib")
-    selected_features = joblib.load("../models/selected_features.joblib")
+    random_forest_model = joblib.load("/models/random_forest_model.joblib")
+    scaler = joblib.load("/models/scaler.joblib")
+    selected_features = joblib.load("/models/selected_features.joblib")
     print("Selected features:", selected_features)
     print("Feature importances:", dict(zip(selected_features, random_forest_model.feature_importances_)))
 except FileNotFoundError as e:
