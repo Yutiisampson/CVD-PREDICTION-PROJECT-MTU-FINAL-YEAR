@@ -6,8 +6,8 @@ import requests
 from io import StringIO
 from preprocessing import preprocess_input
 
-# Load dataset from GitHub
-GITHUB_RAW_URL = "https://raw.githubusercontent.com/yourusername/CVD_Final_Year_Project_MTU/main/data/CVDdata_mini.csv"  # Replace with your URL
+
+GITHUB_RAW_URL = "https://github.com/Yutiisampson/CVD-PREDICTION-PROJECT-MTU-FINAL-YEAR/blob/main/data/CVDdata_mini.csv" 
 try:
     response = requests.get(GITHUB_RAW_URL)
     response.raise_for_status()
@@ -16,11 +16,11 @@ try:
 except Exception as e:
     raise RuntimeError(f"Failed to load dataset from GitHub: {str(e)}")
 
-# Prepare features and target
-X = data.drop(columns=['Heart_Disease'])  # Adjust target column name
-y = data['Heart_Disease'].map({'Yes': 1, 'No': 0})  # Adjust encoding
 
-# Preprocess training data
+X = data.drop(columns=['Heart_Disease']) 
+y = data['Heart_Disease'].map({'Yes': 1, 'No': 0}) 
+
+
 selected_features = [
     'Height_cm', 'Weight_kg', 'BMI', 'Alcohol_Consumption', 'Fruit_Consumption',
     'Green_Vegetables_Consumption', 'FriedPotato_Consumption', 'Exercise',
@@ -33,7 +33,7 @@ selected_features = [
 ]
 X_processed, scaler = preprocess_input(X, selected_features, is_training=True)
 
-# Train Random Forest with balanced class weights
+
 model = RandomForestClassifier(random_state=42, n_estimators=200, max_depth=10, class_weight="balanced")
 model.fit(X_processed, y)
 
