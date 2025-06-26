@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import joblib
 import pandas as pd
 import numpy as np
-from ..scripts.preprocessing import preprocess_input
+from scripts.preprocessing import preprocess_input
 
 app = FastAPI()
 
